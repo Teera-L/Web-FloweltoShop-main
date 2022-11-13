@@ -1,0 +1,151 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Flower;
+use App\FlowerCategory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+
+class FlowerController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index() {
+        return redirect()->route('home');
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create() {
+        $this->authorize('admin', Flower::class);
+
+        return view('flower.create', [
+            'headercategories' => FlowerCategory::all(),
+            'categories' => FlowerCategory::all(),
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request) {
+        $this->authorize('admin', Flower::class);
+
+        $this->validate($request, [
+            'name' => [ 'required', 'unique:flowers,name', 'min:5' ],
+            'price' => [ 'required', 'integer', 'min:1000' ],
+            'description' => [ 'required', 'min:5' ],
+            'image' => [ 'required' ],
+
+            'category_id' => [ 'required' ],
+        ]);
+
+        $flower = new Flower;
+        $flower->name = $request->name;
+        $flower->price = $request->price;
+        $flower->description = $request->description;
+
+        if ($request->hasFile('image')) { // must be true
+            $image = $request->file('image');
+            $filename = time() . '-' . $image->getClientOriginalName();
+
+            Storage::putFileAs('public/images/', $image, $filename);
+            $flower->image = 'public/images/'. $filename;
+        }
+
+        $flower->category_id = $request->category_id;
+        $flower->save();
+
+        return redirect()->route('flower.index');
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id) {
+        return view('flower.show', [
+            'headercategories' => FlowerCategory::all(),
+            'flower' => Flower::find($id),
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id) {
+        $this->authorize('admin', Flower::class);
+
+        return view('flower.edit', [
+            'headercategories' => FlowerCategory::all(),
+            'categories' => FlowerCategory::all(),
+            'flower' => Flower::find($id),
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id) {
+        $this->authorize('admin', Flower::class);
+
+        $this->validate($request, [
+            'name' => [ 'required', 'unique:flowers,name', 'min:5' ],
+            'price' => [ 'required', 'integer', 'min:50000' ],
+            'description' => [ 'required', 'min:20' ],
+
+            'category_id' => [ 'required' ],
+        ]);
+
+        $flower = Flower::find($id);
+        $flower->name = $request->name;
+        $flower->price = $request->price;
+        $flower->description = $request->description;
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $filename = time() . '-' . $image->getClientOriginalName();
+
+            Storage::putFileAs('public/images/', $image, $filename);
+            $flower->image = 'public/images/'. $filename;
+        }
+
+        $flower->category_id = $request->category_id;
+        $flower->save();
+
+        return redirect()->route('home');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id) {
+        $this->authorize('admin', Flower::class);
+
+        Flower::destroy($id);
+        return redirect()->back();
+    }
+}
